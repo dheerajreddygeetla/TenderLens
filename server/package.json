@@ -8,7 +8,10 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "lint": "eslint src --ext .js",
-    "format": "prettier --write \"src/**/*.js\""
+    "format": "prettier --write \"src/**/*.js\"",
+    "db:migrate": "node src/db/migrate.js",
+    "db:seed": "node src/db/seed.js",
+    "db:reset": "node src/db/reset.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -20,6 +23,7 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "pg": "^8.23.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
