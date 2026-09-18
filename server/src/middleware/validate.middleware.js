@@ -1,17 +1,41 @@
 import { httpError } from "../utils/httpError.js";
 
-export const validateBody = (schema) => (req, res, next) => {
-  const result = schema.safeParse(req.body);
+const runSchema = (schema, payload) => {
+  const result = schema.safeParse(payload);
   if (!result.success) {
-    return next(
-      httpError(400, "Validation failed", {
-        issues: result.error.issues.map((i) => ({
-          path: i.path.join("."),
-          message: i.message,
-        })),
-      })
-    );
+    throw httpError(400, "Validation failed", {
+      issues: result.error.issues.map((i) => ({
+        path: i.path.join("."),
+        message: i.message,
+      })),
+    });
   }
-  req.body = result.data;
-  next();
+  return result.data;
+};
+
+export const validateBody = (schema) => (req, res, next) => {
+  try {
+    req.body = runSchema(schema, req.body);
+    next();
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const validateQuery = (schema) => (req, res, next) => {
+  try {
+    req.validatedQuery = runSchema(schema, req.query);
+    next();
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const validateParams = (schema) => (req, res, next) => {
+  try {
+    req.validatedParams = runSchema(schema, req.params);
+    next();
+  } catch (err) {
+    next(err);
+  }
 };
