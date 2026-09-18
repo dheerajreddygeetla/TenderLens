@@ -3,6 +3,9 @@ import { pool, withTransaction } from "../config/database.js";
 import { env } from "../config/env.js";
 import { logger } from "../utils/logger.js";
 
+import { seedProcurementBase } from "./seeds/procurement-base.js";
+import { seedTenders } from "./seeds/procurement-tenders.js";
+
 // -----------------------------------------------------------------------------
 // Roles
 // -----------------------------------------------------------------------------
@@ -17,45 +20,34 @@ const ROLES = [
 // Permissions
 // -----------------------------------------------------------------------------
 const PERMISSIONS = [
-  // Tenders
   ["tender:read",   "View tenders"],
   ["tender:create", "Create tenders"],
   ["tender:update", "Update tenders"],
   ["tender:delete", "Delete tenders"],
-  // Documents
   ["document:read",   "View documents"],
   ["document:upload", "Upload documents"],
   ["document:delete", "Delete documents"],
-  // Analysis
   ["analysis:run",  "Run AI analysis"],
   ["analysis:read", "View AI analysis"],
-  // Risks
   ["risk:read",   "View review indicators"],
   ["risk:update", "Update review indicator status"],
-  // Companies
   ["company:read",   "View companies"],
   ["company:update", "Update companies"],
-  // Contracts
   ["contract:read",   "View contracts"],
   ["contract:update", "Update contracts"],
-  // Users
   ["user:read",    "View users"],
   ["user:create",  "Create users"],
   ["user:update",  "Update users"],
   ["user:disable", "Disable users"],
-  // Roles
   ["role:read",   "View roles"],
   ["role:update", "Update roles & permissions"],
-  // Audit
   ["audit:read", "View audit logs"],
-  // Settings
   ["settings:read",   "View system settings"],
   ["settings:update", "Update system settings"],
 ];
 
-// Role -> permission codes
 const ROLE_PERMISSIONS = {
-  admin: PERMISSIONS.map(([code]) => code), // all
+  admin: PERMISSIONS.map(([code]) => code),
   officer: [
     "tender:read", "tender:create", "tender:update",
     "document:read", "document:upload",
@@ -82,21 +74,17 @@ const ROLE_PERMISSIONS = {
   ],
 };
 
-// -----------------------------------------------------------------------------
-// Demo users  (⚠️ development-only credentials)
-// -----------------------------------------------------------------------------
 const DEMO_USERS = [
-  { email: "admin@tenderlens.local",   fullName: "Admin User",     role: "admin",   password: "Admin@12345" },
-  { email: "officer@tenderlens.local", fullName: "Priya Sharma",   role: "officer", password: "Officer@12345" },
-  { email: "auditor@tenderlens.local", fullName: "Rahul Verma",    role: "auditor", password: "Auditor@12345" },
-  { email: "viewer@tenderlens.local",  fullName: "Guest Viewer",   role: "viewer",  password: "Viewer@12345" },
+  { email: "admin@tenderlens.local",   fullName: "Admin User",   role: "admin",   password: "Admin@12345" },
+  { email: "officer@tenderlens.local", fullName: "Priya Sharma", role: "officer", password: "Officer@12345" },
+  { email: "auditor@tenderlens.local", fullName: "Rahul Verma",  role: "auditor", password: "Auditor@12345" },
+  { email: "viewer@tenderlens.local",  fullName: "Guest Viewer", role: "viewer",  password: "Viewer@12345" },
 ];
 
 // -----------------------------------------------------------------------------
-// Seeders
+// Users / RBAC
 // -----------------------------------------------------------------------------
 const seedRolesAndPermissions = async (client) => {
-  // Roles
   for (const r of ROLES) {
     await client.query(
       `INSERT INTO roles (name, description)
@@ -106,7 +94,6 @@ const seedRolesAndPermissions = async (client) => {
     );
   }
 
-  // Permissions
   for (const [code, description] of PERMISSIONS) {
     await client.query(
       `INSERT INTO permissions (code, description)
@@ -116,10 +103,9 @@ const seedRolesAndPermissions = async (client) => {
     );
   }
 
-  // Role -> permissions
   for (const [roleName, codes] of Object.entries(ROLE_PERMISSIONS)) {
-    const { rows: roleRows } = await client.query("SELECT id FROM roles WHERE name = $1", [roleName]);
-    const roleId = roleRows[0].id;
+    const { rows } = await client.query("SELECT id FROM roles WHERE name = $1", [roleName]);
+    const roleId = rows[0].id;
 
     await client.query("DELETE FROM role_permissions WHERE role_id = $1", [roleId]);
 
@@ -154,15 +140,38 @@ const seedUsers = async (client) => {
                      is_active     = TRUE`,
       [u.email, hash, u.fullName, roleId]
     );
-    logger.info(`Seeded user ${u.email} (role=${u.role})`);
   }
+
+  logger.info(`Seeded ${DEMO_USERS.length} demo users`);
 };
 
+const findAdminId = async (client) => {
+  const { rows } = await client.query(
+    `SELECT u.id FROM users u JOIN roles r ON r.id = u.role_id WHERE r.name = 'admin' LIMIT 1`
+  );
+  return rows[0]?.id || null;
+};
+
+// -----------------------------------------------------------------------------
+// Main
+// -----------------------------------------------------------------------------
 const main = async () => {
   await withTransaction(async (client) => {
     await seedRolesAndPermissions(client);
     await seedUsers(client);
   });
+
+  // Procurement base (idempotent upserts — no transaction needed)
+  await withTransaction(async (client) => {
+    await seedProcurementBase(client);
+  });
+
+  // Tenders (needs admin author id)
+  await withTransaction(async (client) => {
+    const adminId = await findAdminId(client);
+    await seedTenders(client, { count: 120, createdBy: adminId });
+  });
+
   logger.info("Seed complete");
 };
 
