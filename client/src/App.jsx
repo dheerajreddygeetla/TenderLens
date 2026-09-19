@@ -20,6 +20,7 @@ import Contracts from "./pages/Contracts.jsx";
 import Documents from "./pages/Documents.jsx";
 import Analysis from "./pages/Analysis.jsx";
 import Risks from "./pages/Risks.jsx";
+import RiskDetail from "./pages/RiskDetail.jsx";
 import Graph from "./pages/Graph.jsx";
 import Map from "./pages/Map.jsx";
 import Reports from "./pages/Reports.jsx";
@@ -57,7 +58,9 @@ export default function App() {
             <Route path="/contracts" element={<Contracts />} />
             <Route path="/documents" element={<Documents />} />
             <Route path="/analysis" element={<Analysis />} />
+            <Route path="/analysis/:tenderId" element={<Analysis />} />
             <Route path="/risks" element={<Risks />} />
+            <Route path="/risks/:id" element={<RiskDetail />} />
             <Route path="/graph" element={<Graph />} />
             <Route path="/map" element={<Map />} />
             <Route path="/reports" element={<Reports />} />
