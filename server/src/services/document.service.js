@@ -3,6 +3,8 @@ import { httpError } from "../utils/httpError.js";
 import { buildPagination, parsePagination } from "../utils/pagination.js";
 import { storage } from "../config/storage.js";
 import { recordAudit } from "./audit.service.js";
+import { getDocumentQueue } from "../jobs/queue.js";
+import { logger } from "../utils/logger.js";
 
 const SELECT_DOC_BASE = `
   SELECT
@@ -75,6 +77,16 @@ export const listDocumentsForTender = async (tenderId) => {
   return rows;
 };
 
+export const getChunksForDocument = async (id) => {
+  const { rows } = await query(
+    `SELECT id, chunk_index AS "chunkIndex", content, char_count AS "charCount"
+     FROM document_chunks WHERE document_id = $1
+     ORDER BY chunk_index ASC`,
+    [id]
+  );
+  return rows;
+};
+
 export const uploadDocument = async ({ file, tenderId, user, meta = {} }) => {
   if (!file) throw httpError(400, "No file provided");
 
@@ -83,7 +95,6 @@ export const uploadDocument = async ({ file, tenderId, user, meta = {} }) => {
     originalName: file.originalname,
   });
 
-  // Duplicate detection by hash
   const { rows: existing } = await query(
     `SELECT id FROM documents WHERE file_hash = $1 LIMIT 1`,
     [fileHash]
@@ -115,6 +126,14 @@ export const uploadDocument = async ({ file, tenderId, user, meta = {} }) => {
     ip: meta.ip,
     userAgent: meta.userAgent,
   });
+
+  // Enqueue background processing
+  try {
+    const queue = getDocumentQueue();
+    await queue.add("process", { documentId: rows[0].id });
+  } catch (err) {
+    logger.warn("Failed to enqueue document job", { message: err.message });
+  }
 
   const doc = await getDocumentById(rows[0].id);
   return { ...doc, isDuplicate };
