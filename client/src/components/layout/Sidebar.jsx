@@ -1,56 +1,51 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth.js";
-
-const SECTIONS = [
-  {
-    label: "Overview",
-    items: [{ to: "/dashboard", icon: "◧", label: "Dashboard" }],
-  },
-  {
-    label: "Procurement",
-    items: [
-      { to: "/tenders", icon: "▤", label: "Tenders" },
-      { to: "/bids", icon: "₹", label: "Bids & Pricing" },
-      { to: "/contracts", icon: "❖", label: "Contracts" },
-      { to: "/documents", icon: "▦", label: "Documents" },
-    ],
-  },
-  {
-    label: "AI Intelligence",
-    items: [
-      { to: "/analysis", icon: "✦", label: "Tender Analysis" },
-      { to: "/risks", icon: "⚠", label: "Risk Center" },
-      { to: "/companies", icon: "⌂", label: "Companies" },
-      { to: "/graph", icon: "◯", label: "Relationship Graph" },
-    ],
-  },
-  {
-    label: "Monitoring",
-    items: [
-      { to: "/map", icon: "◉", label: "Procurement Map" },
-      { to: "/reports", icon: "⎙", label: "Reports & Audit" },
-    ],
-  },
-  {
-    label: "System",
-    items: [
-      { to: "/notifications", icon: "◔", label: "Notifications", badge: 3 },
-      { to: "/settings", icon: "⚙", label: "Settings" },
-    ],
-  },
-];
+import { useNotifications } from "../../hooks/useNotifications.js";
 
 const initials = (name) =>
   (name || "?")
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join("");
+    .split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen }) {
   const { user, logout } = useAuth();
+  const { unread } = useNotifications();
   const navigate = useNavigate();
+
+  const SECTIONS = [
+    { label: "Overview", items: [{ to: "/dashboard", icon: "◧", label: "Dashboard" }] },
+    {
+      label: "Procurement",
+      items: [
+        { to: "/tenders", icon: "▤", label: "Tenders" },
+        { to: "/bids", icon: "₹", label: "Bids & Pricing" },
+        { to: "/contracts", icon: "❖", label: "Contracts" },
+        { to: "/documents", icon: "▦", label: "Documents" },
+      ],
+    },
+    {
+      label: "AI Intelligence",
+      items: [
+        { to: "/analysis", icon: "✦", label: "Tender Analysis" },
+        { to: "/risks", icon: "⚠", label: "Risk Center" },
+        { to: "/companies", icon: "⌂", label: "Companies" },
+        { to: "/graph", icon: "◯", label: "Relationship Graph" },
+      ],
+    },
+    {
+      label: "Monitoring",
+      items: [
+        { to: "/map", icon: "◉", label: "Procurement Map" },
+        { to: "/reports", icon: "⎙", label: "Reports & Audit" },
+      ],
+    },
+    {
+      label: "System",
+      items: [
+        { to: "/notifications", icon: "◔", label: "Notifications", badge: unread || undefined },
+        { to: "/settings", icon: "⚙", label: "Settings" },
+      ],
+    },
+  ];
 
   const handleLogout = async () => {
     await logout();
@@ -83,16 +78,12 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen }) {
               <NavLink
                 key={item.to}
                 to={item.to}
-                className={({ isActive }) =>
-                  `tl-nav-link${isActive ? " tl-active" : ""}`
-                }
+                className={({ isActive }) => `tl-nav-link${isActive ? " tl-active" : ""}`}
                 title={collapsed ? item.label : undefined}
               >
                 <span className="tl-nav-icon">{item.icon}</span>
                 {!collapsed && <span>{item.label}</span>}
-                {!collapsed && item.badge ? (
-                  <span className="tl-nav-badge">{item.badge}</span>
-                ) : null}
+                {!collapsed && item.badge ? <span className="tl-nav-badge">{item.badge}</span> : null}
               </NavLink>
             ))}
           </div>

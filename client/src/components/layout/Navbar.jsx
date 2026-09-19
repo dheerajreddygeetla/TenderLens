@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth.js";
+import { useNotifications } from "../../hooks/useNotifications.js";
 
 const titleFromPath = (pathname) => {
   const map = {
@@ -19,28 +20,26 @@ const titleFromPath = (pathname) => {
     "/settings": { title: "Settings", crumb: "System / Settings" },
   };
   if (map[pathname]) return map[pathname];
-
   if (pathname.startsWith("/tenders/")) return { title: "Tender Details", crumb: "Procurement / Tenders / Detail" };
   if (pathname.startsWith("/companies/")) return { title: "Company Profile", crumb: "AI Intelligence / Companies / Profile" };
+  if (pathname.startsWith("/analysis/")) return { title: "Tender Analysis", crumb: "AI Intelligence / Analysis" };
+  if (pathname.startsWith("/risks/")) return { title: "Review Indicator", crumb: "AI Intelligence / Risk Center / Detail" };
   return { title: "TenderLens", crumb: "" };
 };
 
 const initials = (name) =>
   (name || "?")
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join("");
+    .split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 
 export default function Navbar({ onToggleSidebar }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { unread } = useNotifications();
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
   const menuRef = useRef(null);
-
   const meta = titleFromPath(location.pathname);
 
   useEffect(() => {
@@ -84,17 +83,13 @@ export default function Navbar({ onToggleSidebar }) {
       </form>
 
       <div className="tl-navbar-right">
-        <button className="tl-icon-btn" title="Notifications">
-          ◔<span className="tl-dot" />
-        </button>
+        <Link to="/notifications" className="tl-icon-btn" title="Notifications" style={{ textDecoration: "none" }}>
+          ◔{unread > 0 && <span className="tl-dot" />}
+        </Link>
         <button className="tl-icon-btn" title="Help">?</button>
 
         <div className="tl-user-menu-wrap" ref={menuRef}>
-          <button
-            className="tl-avatar"
-            onClick={() => setMenuOpen((o) => !o)}
-            title={user?.fullName}
-          >
+          <button className="tl-avatar" onClick={() => setMenuOpen((o) => !o)} title={user?.fullName}>
             {initials(user?.fullName)}
           </button>
 
@@ -104,18 +99,10 @@ export default function Navbar({ onToggleSidebar }) {
                 <div className="tl-user-menu-name">{user?.fullName}</div>
                 <div className="tl-user-menu-role">{user?.role}</div>
               </div>
-              <Link to="/settings" className="tl-user-menu-item" onClick={() => setMenuOpen(false)}>
-                My Profile
-              </Link>
-              <Link to="/settings" className="tl-user-menu-item" onClick={() => setMenuOpen(false)}>
-                Account Settings
-              </Link>
-              <Link to="/settings" className="tl-user-menu-item" onClick={() => setMenuOpen(false)}>
-                Security
-              </Link>
-              <button className="tl-user-menu-item tl-danger" onClick={handleLogout}>
-                Logout
-              </button>
+              <Link to="/settings" className="tl-user-menu-item" onClick={() => setMenuOpen(false)}>My Profile</Link>
+              <Link to="/settings" className="tl-user-menu-item" onClick={() => setMenuOpen(false)}>Account Settings</Link>
+              <Link to="/settings" className="tl-user-menu-item" onClick={() => setMenuOpen(false)}>Security</Link>
+              <button className="tl-user-menu-item tl-danger" onClick={handleLogout}>Logout</button>
             </div>
           )}
         </div>
