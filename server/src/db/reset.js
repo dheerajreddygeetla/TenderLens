@@ -14,6 +14,20 @@ if (env.isProd) {
 const main = async () => {
   await pool.query(`
     DROP TABLE IF EXISTS
+      notifications,
+      review_notes,
+      review_indicators,
+      analysis_runs,
+      document_chunks,
+      documents,
+      contract_amendments,
+      contracts,
+      bids,
+      tenders,
+      projects,
+      companies,
+      locations,
+      departments,
       audit_logs,
       password_resets,
       refresh_tokens,

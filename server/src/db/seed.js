@@ -5,6 +5,9 @@ import { logger } from "../utils/logger.js";
 
 import { seedProcurementBase } from "./seeds/procurement-base.js";
 import { seedTenders } from "./seeds/procurement-tenders.js";
+import { seedBids } from "./seeds/procurement-bids.js";
+import { seedContracts } from "./seeds/procurement-contracts.js";
+import { seedDocuments } from "./seeds/procurement-documents.js";
 
 // -----------------------------------------------------------------------------
 // Roles
@@ -141,7 +144,6 @@ const seedUsers = async (client) => {
       [u.email, hash, u.fullName, roleId]
     );
   }
-
   logger.info(`Seeded ${DEMO_USERS.length} demo users`);
 };
 
@@ -161,15 +163,26 @@ const main = async () => {
     await seedUsers(client);
   });
 
-  // Procurement base (idempotent upserts — no transaction needed)
   await withTransaction(async (client) => {
     await seedProcurementBase(client);
   });
 
-  // Tenders (needs admin author id)
   await withTransaction(async (client) => {
     const adminId = await findAdminId(client);
     await seedTenders(client, { count: 120, createdBy: adminId });
+  });
+
+  await withTransaction(async (client) => {
+    await seedBids(client);
+  });
+
+  await withTransaction(async (client) => {
+    await seedContracts(client);
+  });
+
+  await withTransaction(async (client) => {
+    const adminId = await findAdminId(client);
+    await seedDocuments(client, { adminId });
   });
 
   logger.info("Seed complete");
