@@ -2,17 +2,23 @@ import app from "./app.js";
 import { env } from "./config/env.js";
 import { logger } from "./utils/logger.js";
 import { ensureStorageRoot } from "./config/storage.js";
+import { startWorkers, stopWorkers } from "./jobs/index.js";
 
 const start = async () => {
   await ensureStorageRoot();
 
+  // Start background workers in-process (fine for development/demo).
+  const workers = startWorkers();
+
   const server = app.listen(env.PORT, () => {
     logger.info(`TenderLens API listening on http://localhost:${env.PORT}`);
     logger.info(`Health: http://localhost:${env.PORT}/api/health`);
+    logger.info(`Workers running: ${workers.length}`);
   });
 
-  const shutdown = (signal) => {
+  const shutdown = async (signal) => {
     logger.info(`${signal} received — shutting down gracefully`);
+    try { await stopWorkers(); } catch { /* ignore */ }
     server.close(() => {
       logger.info("HTTP server closed");
       process.exit(0);

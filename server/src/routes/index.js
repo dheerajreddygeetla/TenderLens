@@ -6,6 +6,9 @@ import companyRoutes from "./company.routes.js";
 import bidRoutes from "./bid.routes.js";
 import contractRoutes from "./contract.routes.js";
 import documentRoutes from "./document.routes.js";
+import analysisRoutes from "./analysis.routes.js";
+import reviewRoutes from "./review.routes.js";
+import notificationRoutes from "./notification.routes.js";
 import statsRoutes from "./stats.routes.js";
 import probeRoutes from "./_probe.routes.js";
 
@@ -18,6 +21,9 @@ router.use("/companies", companyRoutes);
 router.use("/bids", bidRoutes);
 router.use("/contracts", contractRoutes);
 router.use("/documents", documentRoutes);
+router.use("/analysis", analysisRoutes);
+router.use("/risks", reviewRoutes);
+router.use("/notifications", notificationRoutes);
 router.use("/stats", statsRoutes);
 router.use("/_probe", probeRoutes);
 
