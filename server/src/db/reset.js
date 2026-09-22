@@ -1,7 +1,3 @@
-/**
- * DANGER: Drops every TenderLens table. Development only.
- * Run with: npm run db:reset
- */
 import { pool } from "../config/database.js";
 import { env } from "../config/env.js";
 import { logger } from "../utils/logger.js";
@@ -14,6 +10,8 @@ if (env.isProd) {
 const main = async () => {
   await pool.query(`
     DROP TABLE IF EXISTS
+      entity_matches,
+      graph_sync_runs,
       notifications,
       review_notes,
       review_indicators,
