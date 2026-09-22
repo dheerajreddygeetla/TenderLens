@@ -9,6 +9,8 @@ import documentRoutes from "./document.routes.js";
 import analysisRoutes from "./analysis.routes.js";
 import reviewRoutes from "./review.routes.js";
 import notificationRoutes from "./notification.routes.js";
+import graphRoutes from "./graph.routes.js";
+import entityMatchRoutes from "./entity-resolution.routes.js";
 import statsRoutes from "./stats.routes.js";
 import probeRoutes from "./_probe.routes.js";
 
@@ -24,6 +26,8 @@ router.use("/documents", documentRoutes);
 router.use("/analysis", analysisRoutes);
 router.use("/risks", reviewRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/graph", graphRoutes);
+router.use("/entity-matches", entityMatchRoutes);
 router.use("/stats", statsRoutes);
 router.use("/_probe", probeRoutes);
 
