@@ -1,10 +1,10 @@
-import fitz  # PyMuPDF
+import pymupdf  # modern name; `fitz` is a deprecated alias
 from typing import Tuple
 
 
 def extract_pdf_text(data: bytes) -> Tuple[str, int, list[dict]]:
     """Return (full_text, page_count, pages metadata)."""
-    doc = fitz.open(stream=data, filetype="pdf")
+    doc = pymupdf.open(stream=data, filetype="pdf")
     pages: list[dict] = []
     parts: list[str] = []
 
