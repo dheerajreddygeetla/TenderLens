@@ -2,10 +2,15 @@ import { verifyAccessToken } from "../utils/jwt.js";
 import { httpError } from "../utils/httpError.js";
 
 export const authenticate = (req, res, next) => {
+  let token = null;
   const header = req.headers.authorization || "";
-  const [scheme, token] = header.split(" ");
+  if (header.startsWith("Bearer ")) {
+    token = header.slice(7).trim();
+  } else if (req.query?.token) {
+    token = String(req.query.token);
+  }
 
-  if (scheme !== "Bearer" || !token) {
+  if (!token) {
     return next(httpError(401, "Authentication required"));
   }
 

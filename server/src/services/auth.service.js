@@ -1,6 +1,8 @@
+import { authenticator } from "@otplib/v12-adapter";
+import QRCode from "qrcode";
 import { query, withTransaction } from "../config/database.js";
 import { env } from "../config/env.js";
-import { signAccessToken } from "../utils/jwt.js";
+import { signAccessToken, signMfaChallenge, verifyMfaChallenge } from "../utils/jwt.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
 import { generateOpaqueToken, sha256 } from "../utils/tokens.js";
 import { httpError } from "../utils/httpError.js";
@@ -8,7 +10,7 @@ import { recordAudit } from "./audit.service.js";
 import { logger } from "../utils/logger.js";
 
 const REFRESH_TTL_MS = env.JWT_REFRESH_EXPIRES_MS;
-const RESET_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const RESET_TTL_MS = 30 * 60 * 1000;
 
 // -----------------------------------------------------------------------------
 // Helpers
@@ -28,7 +30,8 @@ const getPermissionsForRole = async (roleId) => {
 const findUserByEmail = async (email) => {
   const { rows } = await query(
     `SELECT u.id, u.email, u.password_hash, u.full_name, u.is_active,
-            u.role_id, r.name AS role
+            u.role_id, r.name AS role,
+            u.mfa_enabled AS "mfaEnabled", u.mfa_secret AS "mfaSecret"
      FROM users u
      JOIN roles r ON r.id = u.role_id
      WHERE LOWER(u.email) = LOWER($1)
@@ -41,7 +44,8 @@ const findUserByEmail = async (email) => {
 const findUserById = async (id) => {
   const { rows } = await query(
     `SELECT u.id, u.email, u.full_name, u.is_active,
-            u.role_id, r.name AS role
+            u.role_id, r.name AS role,
+            u.mfa_enabled AS "mfaEnabled"
      FROM users u
      JOIN roles r ON r.id = u.role_id
      WHERE u.id = $1
@@ -73,13 +77,25 @@ const issueRefreshToken = async ({ userId, ip, userAgent }) => {
   return raw;
 };
 
+const issueSessionForUser = async (user, { ip, userAgent }) => {
+  const permissions = await getPermissionsForRole(user.role_id);
+  const accessToken = signAccessToken({
+    sub: user.id,
+    email: user.email,
+    role: user.role,
+    permissions,
+  });
+  const refreshToken = await issueRefreshToken({ userId: user.id, ip, userAgent });
+  await query("UPDATE users SET last_login_at = NOW() WHERE id = $1", [user.id]);
+  return { user: toPublicUser(user, permissions), accessToken, refreshToken };
+};
+
 // -----------------------------------------------------------------------------
 // Public API
 // -----------------------------------------------------------------------------
 export const loginUser = async ({ email, password, ip, userAgent }) => {
   const user = await findUserByEmail(email);
 
-  // Constant-ish response for user-not-found vs bad-password
   if (!user || !user.is_active) {
     await recordAudit({
       action: "auth.login",
@@ -104,18 +120,23 @@ export const loginUser = async ({ email, password, ip, userAgent }) => {
     throw httpError(401, "Invalid email or password");
   }
 
-  const permissions = await getPermissionsForRole(user.role_id);
+  if (user.mfaEnabled && user.mfaSecret) {
+    const mfaToken = signMfaChallenge({ sub: user.id });
+    await recordAudit({
+      userId: user.id,
+      action: "auth.login.mfa_challenge",
+      result: "success",
+      ip,
+      userAgent,
+    });
+    return {
+      mfaRequired: true,
+      mfaToken,
+      user: { id: user.id, email: user.email, fullName: user.full_name },
+    };
+  }
 
-  const accessToken = signAccessToken({
-    sub: user.id,
-    email: user.email,
-    role: user.role,
-    permissions,
-  });
-
-  const refreshToken = await issueRefreshToken({ userId: user.id, ip, userAgent });
-
-  await query("UPDATE users SET last_login_at = NOW() WHERE id = $1", [user.id]);
+  const session = await issueSessionForUser(user, { ip, userAgent });
 
   await recordAudit({
     userId: user.id,
@@ -126,15 +147,50 @@ export const loginUser = async ({ email, password, ip, userAgent }) => {
     userAgent,
   });
 
-  return { user: toPublicUser(user, permissions), accessToken, refreshToken };
+  return { mfaRequired: false, ...session };
+};
+
+export const completeMfaLogin = async ({ mfaToken, code, ip, userAgent }) => {
+  let payload;
+  try {
+    payload = verifyMfaChallenge(mfaToken);
+  } catch {
+    throw httpError(401, "MFA challenge expired or invalid");
+  }
+
+  const user = await findUserByEmail((await findUserById(payload.sub)).email);
+  if (!user || !user.mfaEnabled || !user.mfaSecret) throw httpError(400, "MFA not enabled");
+  if (!user.is_active) throw httpError(403, "User disabled");
+
+  const ok = authenticator.check(String(code || "").replace(/\s+/g, ""), user.mfaSecret);
+  if (!ok) {
+    await recordAudit({
+      userId: user.id,
+      action: "auth.login.mfa",
+      result: "failure",
+      ip,
+      userAgent,
+    });
+    throw httpError(401, "Invalid MFA code");
+  }
+
+  const session = await issueSessionForUser(user, { ip, userAgent });
+
+  await recordAudit({
+    userId: user.id,
+    action: "auth.login.mfa",
+    result: "success",
+    ip,
+    userAgent,
+  });
+
+  return { mfaRequired: false, ...session };
 };
 
 export const refreshSession = async ({ refreshToken, ip, userAgent }) => {
   if (!refreshToken) throw httpError(401, "No refresh token");
-
   const tokenHash = sha256(refreshToken);
 
-  // Rotate atomically: revoke old, insert new, return new pair.
   return withTransaction(async (client) => {
     const { rows } = await client.query(
       `SELECT rt.id, rt.user_id, rt.expires_at, rt.revoked_at,
@@ -153,10 +209,8 @@ export const refreshSession = async ({ refreshToken, ip, userAgent }) => {
     if (new Date(row.expires_at).getTime() < Date.now()) throw httpError(401, "Refresh token expired");
     if (!row.is_active) throw httpError(403, "User disabled");
 
-    // Revoke current
     await client.query("UPDATE refresh_tokens SET revoked_at = NOW() WHERE id = $1", [row.id]);
 
-    // New refresh
     const newRaw = generateOpaqueToken();
     const newHash = sha256(newRaw);
     const expiresAt = new Date(Date.now() + REFRESH_TTL_MS);
@@ -167,7 +221,6 @@ export const refreshSession = async ({ refreshToken, ip, userAgent }) => {
       [row.user_id, newHash, expiresAt, ip, userAgent]
     );
 
-    // Permissions
     const { rows: permRows } = await client.query(
       `SELECT p.code
        FROM role_permissions rp
@@ -204,18 +257,11 @@ export const logoutUser = async ({ refreshToken, userId, ip, userAgent }) => {
       [tokenHash]
     );
   }
-  await recordAudit({
-    userId,
-    action: "auth.logout",
-    ip,
-    userAgent,
-  });
+  await recordAudit({ userId, action: "auth.logout", ip, userAgent });
 };
 
 export const requestPasswordReset = async ({ email, ip, userAgent }) => {
   const user = await findUserByEmail(email);
-
-  // Always return success-shaped response to avoid user enumeration.
   if (!user) {
     await recordAudit({
       action: "auth.forgot_password",
@@ -237,24 +283,16 @@ export const requestPasswordReset = async ({ email, ip, userAgent }) => {
     [user.id, tokenHash, expiresAt, ip]
   );
 
-  // MOCKED EMAIL DELIVERY for development
   const resetUrl = `http://localhost:5173/reset-password?token=${raw}`;
   logger.info(`[MOCK EMAIL] Password reset link for ${email}: ${resetUrl}`);
 
-  await recordAudit({
-    userId: user.id,
-    action: "auth.forgot_password",
-    metadata: { email },
-    ip,
-    userAgent,
-  });
+  await recordAudit({ userId: user.id, action: "auth.forgot_password", metadata: { email }, ip, userAgent });
 
   return { delivered: true, devResetToken: env.isProd ? undefined : raw };
 };
 
 export const resetPassword = async ({ token, newPassword, ip, userAgent }) => {
   if (!token) throw httpError(400, "Missing reset token");
-
   const tokenHash = sha256(token);
 
   return withTransaction(async (client) => {
@@ -272,11 +310,8 @@ export const resetPassword = async ({ token, newPassword, ip, userAgent }) => {
     if (new Date(row.expires_at).getTime() < Date.now()) throw httpError(400, "Reset token expired");
 
     const hash = await hashPassword(newPassword);
-
     await client.query("UPDATE users SET password_hash = $1 WHERE id = $2", [hash, row.user_id]);
     await client.query("UPDATE password_resets SET used_at = NOW() WHERE id = $1", [row.id]);
-
-    // Revoke all sessions
     await client.query(
       "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL",
       [row.user_id]
@@ -299,5 +334,54 @@ export const getMe = async (userId) => {
   const user = await findUserById(userId);
   if (!user) throw httpError(404, "User not found");
   const permissions = await getPermissionsForRole(user.role_id);
-  return toPublicUser(user, permissions);
+  return { ...toPublicUser(user, permissions), mfaEnabled: !!user.mfaEnabled };
+};
+
+// -----------------------------------------------------------------------------
+// MFA management (used by /api/settings)
+// -----------------------------------------------------------------------------
+export const setupMfa = async (userId) => {
+  const user = await findUserById(userId);
+  if (!user) throw httpError(404, "User not found");
+
+  const secret = authenticator.generateSecret();
+  await query(`UPDATE users SET mfa_pending_secret = $1 WHERE id = $2`, [secret, userId]);
+
+  const otpauth = authenticator.keyuri(user.email, "TenderLens", secret);
+  const qrDataUrl = await QRCode.toDataURL(otpauth);
+
+  return { secret, otpauth, qrDataUrl };
+};
+
+export const verifyAndEnableMfa = async (userId, code) => {
+  const { rows } = await query(
+    `SELECT mfa_pending_secret AS pending FROM users WHERE id = $1`,
+    [userId]
+  );
+  const pending = rows[0]?.pending;
+  if (!pending) throw httpError(400, "No pending MFA setup — start setup first");
+
+  const ok = authenticator.check(String(code || "").replace(/\s+/g, ""), pending);
+  if (!ok) throw httpError(400, "Invalid code");
+
+  await query(
+    `UPDATE users SET mfa_secret = $1, mfa_enabled = TRUE, mfa_pending_secret = NULL WHERE id = $2`,
+    [pending, userId]
+  );
+  return { ok: true };
+};
+
+export const disableMfa = async (userId, password) => {
+  const { rows } = await query(`SELECT password_hash FROM users WHERE id = $1`, [userId]);
+  const hash = rows[0]?.password_hash;
+  if (!hash) throw httpError(404, "User not found");
+
+  const ok = await verifyPassword(password, hash);
+  if (!ok) throw httpError(401, "Password is incorrect");
+
+  await query(
+    `UPDATE users SET mfa_enabled = FALSE, mfa_secret = NULL, mfa_pending_secret = NULL WHERE id = $1`,
+    [userId]
+  );
+  return { ok: true };
 };

@@ -5,6 +5,14 @@ import Pagination from "../components/Pagination.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import { formatCurrency, formatDate } from "../utils/format.js";
 import { useAuth } from "../hooks/useAuth.js";
+import {
+  Search,
+  RotateCcw,
+  Plus,
+  ArrowUpDown,
+  Eye,
+  Building2,
+} from "lucide-react";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All statuses" },
@@ -99,29 +107,51 @@ export default function Tenders() {
     <div>
       <div className="tl-page-header">
         <div>
-          <h1 className="tl-page-title">Tenders</h1>
-          <p className="tl-page-sub">Browse, search and filter government procurement tenders.</p>
+          <h1 className="tl-page-title">Tender Registry</h1>
+          <p className="tl-page-sub">
+            Real-time surveillance, value auditing, and status tracking across all procurement
+            dossiers.
+          </p>
         </div>
         {canCreate && (
           <button className="tl-btn" style={{ width: "auto" }}>
-            + New Tender
+            <Plus size={16} />
+            <span>Register Tender</span>
           </button>
         )}
       </div>
 
+      {/* Filter HUD Bar */}
       <form className="tl-filters" onSubmit={onSearchSubmit}>
-        <input
-          type="search"
-          placeholder="Search tender ID, project, department…"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          style={{ minWidth: 260 }}
-        />
+        <div style={{ position: "relative", minWidth: 280 }}>
+          <input
+            type="search"
+            placeholder="Search code, title, ministry…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            style={{ width: "100%", paddingLeft: 34 }}
+          />
+          <Search
+            size={15}
+            style={{
+              position: "absolute",
+              left: 11,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--tl-text-muted)",
+              pointerEvents: "none",
+            }}
+          />
+        </div>
+
         <select value={status} onChange={(e) => updateParams({ status: e.target.value, page: 1 })}>
           {STATUS_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
           ))}
         </select>
+
         <select
           value={`${sortBy}:${sortDir}`}
           onChange={(e) => {
@@ -135,17 +165,28 @@ export default function Tenders() {
           <option value="estimated_value:asc">Lowest value</option>
           <option value="deadline_at:asc">Deadline soon</option>
         </select>
-        <button type="submit" className="tl-btn">Search</button>
+
+        <button type="submit" className="tl-btn" style={{ gap: 6 }}>
+          <Search size={14} />
+          <span>Filter</span>
+        </button>
+
         <button
           type="button"
           className="tl-btn-ghost"
+          style={{ gap: 6 }}
           onClick={() => {
             setSearchInput("");
             setParams(new URLSearchParams(), { replace: true });
           }}
         >
-          Reset
+          <RotateCcw size={14} />
+          <span>Reset</span>
         </button>
+
+        <div style={{ marginLeft: "auto", fontSize: 12, color: "var(--tl-text-muted)" }}>
+          Showing <strong>{rows.length}</strong> of <strong>{pagination.total}</strong> records
+        </div>
       </form>
 
       {error && <div className="tl-error-bar">{error}</div>}
@@ -154,21 +195,32 @@ export default function Tenders() {
         <table className="tl-table">
           <thead>
             <tr>
-              <th style={{ cursor: "pointer" }} onClick={() => toggleSort("tender_code")}>Tender ID</th>
-              <th>Project / Title</th>
-              <th>Department</th>
-              <th
-                style={{ cursor: "pointer" }}
-                onClick={() => toggleSort("estimated_value")}
-              >
-                Estimated Value
+              <th style={{ cursor: "pointer" }} onClick={() => toggleSort("tender_code")}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>Tender ID</span>
+                  <ArrowUpDown size={12} />
+                </div>
               </th>
-              <th>Location</th>
+              <th>Project / Tender Title</th>
+              <th>Ministry / Department</th>
+              <th style={{ cursor: "pointer" }} onClick={() => toggleSort("estimated_value")}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>Estimated Value</span>
+                  <ArrowUpDown size={12} />
+                </div>
+              </th>
+              <th>Jurisdiction</th>
               <th style={{ cursor: "pointer" }} onClick={() => toggleSort("published_at")}>
-                Published
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>Published</span>
+                  <ArrowUpDown size={12} />
+                </div>
               </th>
               <th style={{ cursor: "pointer" }} onClick={() => toggleSort("deadline_at")}>
-                Deadline
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>Deadline</span>
+                  <ArrowUpDown size={12} />
+                </div>
               </th>
               <th>Status</th>
               <th>Actions</th>
@@ -176,24 +228,71 @@ export default function Tenders() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={9}><div className="tl-loading">Loading tenders…</div></td></tr>
+              <tr>
+                <td colSpan={9}>
+                  <div className="tl-loading">Auditing registry &amp; fetching dossiers…</div>
+                </td>
+              </tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={9}><div className="tl-empty">No tenders match your filters.</div></td></tr>
+              <tr>
+                <td colSpan={9}>
+                  <div className="tl-empty">No tenders match your active filters.</div>
+                </td>
+              </tr>
             ) : (
               rows.map((t) => (
                 <tr key={t.id}>
                   <td>
-                    <Link to={`/tenders/${t.id}`}>{t.tenderCode}</Link>
+                    <Link
+                      to={`/tenders/${t.id}`}
+                      style={{
+                        fontFamily: "var(--tl-font-mono)",
+                        fontWeight: 600,
+                        color: "#38bdf8",
+                      }}
+                    >
+                      {t.tenderCode}
+                    </Link>
                   </td>
-                  <td style={{ maxWidth: 340, whiteSpace: "normal" }}>{t.title}</td>
-                  <td>{t.departmentName || "—"}</td>
-                  <td>{formatCurrency(t.estimatedValue, t.currency)}</td>
-                  <td>{t.locationName ? `${t.locationName}, ${t.locationState || ""}` : "—"}</td>
-                  <td>{formatDate(t.publishedAt)}</td>
-                  <td>{formatDate(t.deadlineAt)}</td>
-                  <td><StatusBadge status={t.status} /></td>
+                  <td style={{ maxWidth: 320, whiteSpace: "normal", fontWeight: 500 }}>
+                    {t.title}
+                  </td>
                   <td>
-                    <Link to={`/tenders/${t.id}`}>View</Link>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <Building2 size={13} color="var(--tl-text-muted)" />
+                      <span>{t.departmentName || "—"}</span>
+                    </span>
+                  </td>
+                  <td style={{ fontWeight: 700, color: "var(--tl-text-primary)" }}>
+                    {formatCurrency(t.estimatedValue, t.currency)}
+                  </td>
+                  <td style={{ color: "var(--tl-text-secondary)" }}>
+                    {t.locationName ? `${t.locationName}, ${t.locationState || ""}` : "—"}
+                  </td>
+                  <td style={{ fontSize: 12.5, color: "var(--tl-text-muted)" }}>
+                    {formatDate(t.publishedAt)}
+                  </td>
+                  <td style={{ fontSize: 12.5, color: "var(--tl-text-muted)" }}>
+                    {formatDate(t.deadlineAt)}
+                  </td>
+                  <td>
+                    <StatusBadge status={t.status} />
+                  </td>
+                  <td>
+                    <Link
+                      to={`/tenders/${t.id}`}
+                      className="tl-btn-ghost"
+                      style={{
+                        padding: "5px 10px",
+                        fontSize: 12,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                      }}
+                    >
+                      <Eye size={13} />
+                      <span>Dossier</span>
+                    </Link>
                   </td>
                 </tr>
               ))

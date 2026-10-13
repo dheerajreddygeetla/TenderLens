@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const rawUrl = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").trim();
+const BASE_URL = rawUrl.endsWith("/api") ? rawUrl : `${rawUrl.replace(/\/+$/, "")}/api`;
 
 /** Access token lives in memory only — never localStorage. */
 let accessToken = null;

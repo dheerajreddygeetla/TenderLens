@@ -10,7 +10,6 @@ if (NODE_ENV === "production") {
   }
 }
 
-/** Parse "15m", "7d", "30s", "2h" → milliseconds. Defaults to 7d. */
 const parseDurationToMs = (value, fallbackMs = 7 * 24 * 3600 * 1000) => {
   if (!value || typeof value !== "string") return fallbackMs;
   const m = /^(\d+)\s*([smhd])$/.exec(value.trim());
@@ -28,6 +27,11 @@ export const env = {
 
   DATABASE_URL: process.env.DATABASE_URL || "",
   REDIS_URL: process.env.REDIS_URL || "",
+
+  NEO4J_URI: process.env.NEO4J_URI || "bolt://localhost:7687",
+  NEO4J_USER: process.env.NEO4J_USER || "neo4j",
+  NEO4J_PASSWORD: process.env.NEO4J_PASSWORD || "tenderlens123",
+  NEO4J_DATABASE: process.env.NEO4J_DATABASE || "neo4j",
 
   JWT_SECRET: process.env.JWT_SECRET || "dev-only-secret-change-me",
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || "dev-only-refresh-secret",

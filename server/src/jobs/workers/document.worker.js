@@ -15,8 +15,6 @@ const updateDocStatus = async (id, status) => {
   await query(`UPDATE documents SET status = $1 WHERE id = $2`, [status, id]);
 };
 
-const loadChunksAsText = (chunks) => chunks.map((c) => c.content).join(" ");
-
 const processDocument = async (job) => {
   const { documentId } = job.data;
 

@@ -1,5 +1,6 @@
 import {
   loginUser,
+  completeMfaLogin,
   refreshSession,
   logoutUser,
   requestPasswordReset,
@@ -38,48 +39,54 @@ export const postLogin = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const { ip, userAgent } = clientContext(req);
+    const result = await loginUser({ email, password, ip, userAgent });
 
-    const { user, accessToken, refreshToken } = await loginUser({
-      email,
-      password,
-      ip,
-      userAgent,
-    });
+    if (result.mfaRequired) {
+      return res.json({
+        success: true,
+        data: { mfaRequired: true, mfaToken: result.mfaToken, user: result.user },
+      });
+    }
 
-    setRefreshCookie(res, refreshToken);
-
+    setRefreshCookie(res, result.refreshToken);
     res.json({
       success: true,
       data: {
-        user,
-        accessToken,
+        mfaRequired: false,
+        user: result.user,
+        accessToken: result.accessToken,
         expiresIn: env.JWT_ACCESS_EXPIRES,
       },
     });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
+};
+
+export const postMfaChallenge = async (req, res, next) => {
+  try {
+    const { mfaToken, code } = req.body || {};
+    const { ip, userAgent } = clientContext(req);
+    const result = await completeMfaLogin({ mfaToken, code, ip, userAgent });
+    setRefreshCookie(res, result.refreshToken);
+    res.json({
+      success: true,
+      data: {
+        mfaRequired: false,
+        user: result.user,
+        accessToken: result.accessToken,
+        expiresIn: env.JWT_ACCESS_EXPIRES,
+      },
+    });
+  } catch (err) { next(err); }
 };
 
 export const postRefresh = async (req, res, next) => {
   try {
     const raw = req.cookies?.[REFRESH_COOKIE];
     const { ip, userAgent } = clientContext(req);
-
-    const { user, accessToken, refreshToken } = await refreshSession({
-      refreshToken: raw,
-      ip,
-      userAgent,
-    });
-
+    const { user, accessToken, refreshToken } = await refreshSession({ refreshToken: raw, ip, userAgent });
     setRefreshCookie(res, refreshToken);
-
-    res.json({
-      success: true,
-      data: { user, accessToken, expiresIn: env.JWT_ACCESS_EXPIRES },
-    });
+    res.json({ success: true, data: { user, accessToken, expiresIn: env.JWT_ACCESS_EXPIRES } });
   } catch (err) {
-    // Clear cookie if it's dead
     clearRefreshCookie(res);
     next(err);
   }
@@ -89,19 +96,10 @@ export const postLogout = async (req, res, next) => {
   try {
     const raw = req.cookies?.[REFRESH_COOKIE];
     const { ip, userAgent } = clientContext(req);
-
-    await logoutUser({
-      refreshToken: raw,
-      userId: req.user?.id ?? null,
-      ip,
-      userAgent,
-    });
-
+    await logoutUser({ refreshToken: raw, userId: req.user?.id ?? null, ip, userAgent });
     clearRefreshCookie(res);
     res.json({ success: true, data: { ok: true } });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 export const postForgotPassword = async (req, res, next) => {
@@ -110,9 +108,7 @@ export const postForgotPassword = async (req, res, next) => {
     const { ip, userAgent } = clientContext(req);
     const result = await requestPasswordReset({ email, ip, userAgent });
     res.json({ success: true, data: result });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 export const postResetPassword = async (req, res, next) => {
@@ -121,16 +117,12 @@ export const postResetPassword = async (req, res, next) => {
     const { ip, userAgent } = clientContext(req);
     const result = await resetPassword({ token, newPassword, ip, userAgent });
     res.json({ success: true, data: result });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 export const getMeController = async (req, res, next) => {
   try {
     const user = await getMe(req.user.id);
     res.json({ success: true, data: { user } });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };

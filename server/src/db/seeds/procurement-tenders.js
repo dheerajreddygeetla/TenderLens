@@ -1,5 +1,5 @@
 import { logger } from "../../utils/logger.js";
-import { DEPARTMENTS, LOCATIONS, PROJECT_THEMES } from "./procurement-base.js";
+import { PROJECT_THEMES } from "./procurement-base.js";
 
 /**
  * Deterministic pseudo-random generator so seeds are repeatable across runs.

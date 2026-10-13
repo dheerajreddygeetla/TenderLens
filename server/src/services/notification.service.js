@@ -1,4 +1,5 @@
 import { query } from "../config/database.js";
+import { emitToUser, emitToRole } from "./realtime.js";
 import { logger } from "../utils/logger.js";
 
 export const createNotification = async ({
@@ -18,7 +19,9 @@ export const createNotification = async ({
                  read_at AS "readAt", created_at AS "createdAt"`,
       [userId, kind, title, body, resourceType, resourceId]
     );
-    return rows[0];
+    const n = rows[0];
+    if (userId) emitToUser(userId, "notification:new", n);
+    return n;
   } catch (err) {
     logger.warn("Failed to create notification", { message: err.message });
     return null;
@@ -35,6 +38,8 @@ export const notifyRole = async (roleName, payload) => {
   for (const r of rows) {
     results.push(await createNotification({ ...payload, userId: r.id }));
   }
+  // Also broadcast a role-level ping so any tab currently connected updates counts
+  if (rows.length) emitToRole(roleName, "notification:role-ping", { kind: payload.kind });
   return results;
 };
 

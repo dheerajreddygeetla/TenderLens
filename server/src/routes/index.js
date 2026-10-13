@@ -11,6 +11,10 @@ import reviewRoutes from "./review.routes.js";
 import notificationRoutes from "./notification.routes.js";
 import graphRoutes from "./graph.routes.js";
 import entityMatchRoutes from "./entity-resolution.routes.js";
+import usersRoutes from "./users.routes.js";
+import settingsRoutes from "./settings.routes.js";
+import auditRoutes from "./audit.routes.js";
+import reportsRoutes from "./reports.routes.js";
 import statsRoutes from "./stats.routes.js";
 import probeRoutes from "./_probe.routes.js";
 
@@ -28,6 +32,10 @@ router.use("/risks", reviewRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/graph", graphRoutes);
 router.use("/entity-matches", entityMatchRoutes);
+router.use("/users", usersRoutes);
+router.use("/settings", settingsRoutes);
+router.use("/audit", auditRoutes);
+router.use("/reports", reportsRoutes);
 router.use("/stats", statsRoutes);
 router.use("/_probe", probeRoutes);
 

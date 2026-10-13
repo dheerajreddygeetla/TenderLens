@@ -49,7 +49,6 @@ router.get("/summary", requirePermission("tender:read"), async (req, res, next) 
   } catch (err) { next(err); }
 });
 
-/** Tender volume + value per month over the last 12 months. */
 router.get("/tenders-over-time", requirePermission("tender:read"), async (req, res, next) => {
   try {
     const { rows } = await query(`
@@ -67,7 +66,6 @@ router.get("/tenders-over-time", requirePermission("tender:read"), async (req, r
   } catch (err) { next(err); }
 });
 
-/** Value distribution by department (already in summary, but keep it as its own route). */
 router.get("/value-by-department", requirePermission("tender:read"), async (req, res, next) => {
   try {
     const { rows } = await query(`
@@ -78,6 +76,26 @@ router.get("/value-by-department", requirePermission("tender:read"), async (req,
       LEFT JOIN tenders t ON t.department_id = d.id
       GROUP BY d.name
       ORDER BY value DESC NULLS LAST
+    `);
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+});
+
+/** Locations with active tender aggregates for the procurement map. */
+router.get("/map", requirePermission("tender:read"), async (req, res, next) => {
+  try {
+    const { rows } = await query(`
+      SELECT
+        l.id, l.name, l.state, l.country,
+        l.latitude::float AS lat, l.longitude::float AS lng,
+        COUNT(t.id)::int AS "tenderCount",
+        COALESCE(SUM(t.estimated_value), 0)::numeric AS "totalValue",
+        COALESCE(SUM(CASE WHEN t.status = 'open' THEN 1 ELSE 0 END), 0)::int AS "openCount"
+      FROM locations l
+      LEFT JOIN tenders t ON t.location_id = l.id
+      GROUP BY l.id, l.name, l.state, l.country, l.latitude, l.longitude
+      HAVING l.latitude IS NOT NULL AND l.longitude IS NOT NULL
+      ORDER BY "tenderCount" DESC
     `);
     res.json({ success: true, data: rows });
   } catch (err) { next(err); }

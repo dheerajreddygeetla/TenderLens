@@ -10,6 +10,7 @@ if (env.isProd) {
 const main = async () => {
   await pool.query(`
     DROP TABLE IF EXISTS
+      reports,
       entity_matches,
       graph_sync_runs,
       notifications,

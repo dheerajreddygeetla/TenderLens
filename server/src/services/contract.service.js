@@ -88,8 +88,11 @@ export const getContractById = async (id) => {
   const { rows: amendments } = await query(
     `SELECT
        id, amendment_no AS "amendmentNo", description,
-       value_delta    AS "valueDelta", new_end_date AS "newEndDate",
-       created_at     AS "createdAt"
+       value_delta    AS "valueDelta",
+       value_delta    AS "valueChange",
+       new_end_date   AS "newEndDate",
+       created_at     AS "createdAt",
+       created_at     AS "effectiveDate"
      FROM contract_amendments
      WHERE contract_id = $1
      ORDER BY amendment_no ASC`,

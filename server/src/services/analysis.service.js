@@ -122,7 +122,7 @@ const loadPeers = async (departmentId, excludeTenderId) => {
  * Create rule-based indicators alongside the ML output.
  * These are stated as observations, never accusations.
  */
-const applyRuleBasedIndicators = async (runId, tender, features, bidStats) => {
+const applyRuleBasedIndicators = async (runId, tender, features, _bidStats) => {
   const created = [];
 
   // ---- Participation ----

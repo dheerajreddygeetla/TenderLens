@@ -6,12 +6,24 @@ import DocumentSimilarityList from "../components/DocumentSimilarityList.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import { formatCurrency, formatDateTime } from "../utils/format.js";
 import { useAuth } from "../hooks/useAuth.js";
+import {
+  BrainCircuit,
+  Play,
+  ArrowLeft,
+  Building2,
+  MapPin,
+  Coins,
+  Activity,
+  Layers,
+  Sparkles,
+  History,
+  CheckCircle2,
+} from "lucide-react";
 
 const pct = (v) => (v === null || v === undefined ? "—" : `${Number(v).toFixed(2)}%`);
 
 export default function Analysis() {
   const { tenderId: routeId } = useParams();
-  // Allow entry from /analysis (no id) — show a picker prompting the user to open a tender
   const { user } = useAuth();
 
   const [tenderId, setTenderId] = useState(routeId || "");
@@ -29,7 +41,7 @@ export default function Analysis() {
       const res = await analysisApi.get(id);
       setData(res.data.data);
     } catch (err) {
-      setError(err?.response?.data?.error?.message || "Failed to load analysis");
+      setError(err?.response?.data?.error?.message || "Failed to load neural analysis");
     } finally {
       setLoading(false);
     }
@@ -50,10 +62,10 @@ export default function Analysis() {
     try {
       const res = await analysisApi.run(tenderId);
       const n = res.data?.data?.indicatorIds?.length || 0;
-      setNotice(`Analysis complete. ${n} new indicator(s) created.`);
+      setNotice(`Inference complete: ${n} anomaly indicator(s) identified.`);
       await load(tenderId);
     } catch (err) {
-      setError(err?.response?.data?.error?.message || "Analysis failed");
+      setError(err?.response?.data?.error?.message || "Inference failed");
     } finally {
       setRunning(false);
     }
@@ -66,23 +78,54 @@ export default function Analysis() {
       <div>
         <div className="tl-page-header">
           <div>
-            <h1 className="tl-page-title">Tender Analysis</h1>
-            <p className="tl-page-sub">Open a tender and choose “Run AI Analysis”, or paste a tender id below.</p>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 11,
+                fontFamily: "var(--tl-font-mono)",
+                color: "#38bdf8",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                marginBottom: 4,
+              }}
+            >
+              <BrainCircuit size={14} />
+              <span>AI COLLUSION &amp; FRAUD DETECTION ENGINE</span>
+            </div>
+            <h1 className="tl-page-title">Neural Tender Analysis</h1>
+            <p className="tl-page-sub">
+              Specify a tender UUID to run statistical anomaly detection, Benford analysis, and
+              NLP text similarity.
+            </p>
           </div>
         </div>
-        <div className="tl-card">
-          <label style={{ fontSize: 12, color: "#475569" }}>Tender UUID</label>
-          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+        <div className="tl-card" style={{ maxWidth: 640 }}>
+          <label className="tl-label">Target Tender UUID</label>
+          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
             <input
               value={tenderId}
               onChange={(e) => setTenderId(e.target.value)}
-              placeholder="00000000-0000-0000-0000-000000000000"
-              style={{ flex: 1, padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: 8, fontFamily: "inherit", fontSize: 13 }}
+              placeholder="e.g. 00000000-0000-0000-0000-000000000000"
+              className="tl-input-like"
+              style={{ flex: 1 }}
             />
-            <button className="tl-btn" style={{ width: "auto" }} onClick={() => load(tenderId)}>Load</button>
+            <button
+              className="tl-btn"
+              style={{ width: "auto" }}
+              onClick={() => load(tenderId)}
+            >
+              Load Dossier
+            </button>
           </div>
-          <p style={{ fontSize: 12, color: "#64748b", marginTop: 10 }}>
-            Tip: navigate to <Link to="/tenders">Tenders</Link> and click a tender’s AI Analysis action.
+          <p style={{ fontSize: 12, color: "var(--tl-text-muted)", marginTop: 14 }}>
+            Direct access tip: Open any tender dossier in{" "}
+            <Link to="/tenders" style={{ fontWeight: 600 }}>
+              Tender Registry
+            </Link>{" "}
+            and click "Run AI Analysis".
           </p>
         </div>
       </div>
@@ -93,104 +136,200 @@ export default function Analysis() {
     <div>
       <div className="tl-page-header">
         <div>
-          <p className="tl-page-sub" style={{ marginBottom: 2 }}>
-            <Link to="/tenders">← Back to Tenders</Link>
+          <p className="tl-page-sub" style={{ marginBottom: 6 }}>
+            <Link
+              to="/tenders"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontWeight: 600,
+              }}
+            >
+              <ArrowLeft size={14} />
+              <span>Back to Registry</span>
+            </Link>
           </p>
           <h1 className="tl-page-title">
-            Tender Analysis {data?.tender?.tenderCode ? `· ${data.tender.tenderCode}` : ""}
+            Neural Analysis {data?.tender?.tenderCode ? `· ${data.tender.tenderCode}` : ""}
           </h1>
-          {data?.tender?.title && <p className="tl-page-sub">{data.tender.title}</p>}
+          {data?.tender?.title && (
+            <p className="tl-page-sub" style={{ fontSize: 14, fontWeight: 500 }}>
+              {data.tender.title}
+            </p>
+          )}
         </div>
         {canRun && (
-          <button className="tl-btn" style={{ width: "auto" }} onClick={runAnalysis} disabled={running}>
-            {running ? "Running…" : "Run AI Analysis"}
+          <button
+            className="tl-btn"
+            style={{ width: "auto" }}
+            onClick={runAnalysis}
+            disabled={running}
+          >
+            <Play size={16} />
+            <span>{running ? "Executing Neural Models…" : "Run Neural Analysis"}</span>
           </button>
         )}
       </div>
 
       {error && <div className="tl-error-bar">{error}</div>}
-      {notice && <div className="tl-card" style={{ marginBottom: 12, borderColor: "#86efac", background: "#f0fdf4", color: "#166534", fontSize: 13 }}>{notice}</div>}
+      {notice && (
+        <div
+          className="tl-card"
+          style={{
+            marginBottom: 16,
+            borderColor: "rgba(16, 185, 129, 0.4)",
+            background: "rgba(16, 185, 129, 0.08)",
+            color: "#6ee7b7",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <CheckCircle2 size={16} />
+          <span>{notice}</span>
+        </div>
+      )}
 
-      {loading && <div className="tl-loading">Loading analysis…</div>}
+      {loading && <div className="tl-loading">Fetching deep audit telemetry…</div>}
 
       {data && (
         <>
-          <div className="tl-card" style={{ marginBottom: 16 }}>
+          {/* Metadata Card */}
+          <div className="tl-card" style={{ marginBottom: 20 }}>
             <div className="tl-grid tl-grid-cols-4">
-              <Info label="Department" value={data.tender.departmentName || "—"} />
-              <Info label="Location" value={data.tender.locationName || "—"} />
-              <Info label="Estimated Value" value={formatCurrency(data.tender.estimatedValue, data.tender.currency)} />
-              <Info label="Status" value={<StatusBadge status={data.tender.status} />} />
+              <Info
+                icon={<Building2 size={14} />}
+                label="Department"
+                value={data.tender.departmentName || "—"}
+              />
+              <Info
+                icon={<MapPin size={14} />}
+                label="Jurisdiction"
+                value={data.tender.locationName || "—"}
+              />
+              <Info
+                icon={<Coins size={14} />}
+                label="Estimated Value"
+                value={formatCurrency(data.tender.estimatedValue, data.tender.currency)}
+              />
+              <Info
+                icon={<Activity size={14} />}
+                label="Registry Status"
+                value={<StatusBadge status={data.tender.status} />}
+              />
             </div>
           </div>
 
-          {/* Summary banner */}
-          <div className="tl-card" style={{ marginBottom: 16 }}>
-            <h2 className="tl-card-title">Analysis Summary</h2>
+          {/* Neural Run Summary */}
+          <div className="tl-card" style={{ marginBottom: 20 }}>
+            <h2 className="tl-card-title">
+              <BrainCircuit size={17} color="#38bdf8" />
+              <span>Inference Telemetry &amp; Bid Variance</span>
+            </h2>
             {data.latestRun ? (
               <div className="tl-grid tl-grid-cols-4">
-                <Info label="Run status" value={data.latestRun.status} />
-                <Info label="Model" value={data.latestRun.modelName || "—"} />
-                <Info label="Started" value={formatDateTime(data.latestRun.startedAt)} />
-                <Info label="Finished" value={formatDateTime(data.latestRun.finishedAt)} />
-                <Info label="Bidders" value={data.bidStats?.bidCount ?? 0} />
-                <Info label="Lowest bid" value={formatCurrency(data.bidStats?.lowestBid, data.tender.currency)} />
-                <Info label="Average bid" value={formatCurrency(data.bidStats?.averageBid, data.tender.currency)} />
-                <Info label="Highest bid" value={formatCurrency(data.bidStats?.highestBid, data.tender.currency)} />
-                <Info label="Winning bid" value={formatCurrency(data.bidStats?.winningBid, data.tender.currency)} />
-                <Info label="Avg deviation" value={pct(data.bidStats?.averageDeviationPct)} />
-                <Info label="Lowest dev." value={pct(data.bidStats?.lowestDeviationPct)} />
-                <Info label="Highest dev." value={pct(data.bidStats?.highestDeviationPct)} />
+                <Info label="Run Status" value={data.latestRun.status} />
+                <Info label="Active Model" value={data.latestRun.modelName || "Standard AI Heuristics"} />
+                <Info label="Inference Timestamp" value={formatDateTime(data.latestRun.startedAt)} />
+                <Info label="Duration" value={formatDateTime(data.latestRun.finishedAt)} />
+                <Info label="Bid Count" value={data.bidStats?.bidCount ?? 0} />
+                <Info
+                  label="Lowest Bid"
+                  value={formatCurrency(data.bidStats?.lowestBid, data.tender.currency)}
+                />
+                <Info
+                  label="Average Bid"
+                  value={formatCurrency(data.bidStats?.averageBid, data.tender.currency)}
+                />
+                <Info
+                  label="Highest Bid"
+                  value={formatCurrency(data.bidStats?.highestBid, data.tender.currency)}
+                />
+                <Info
+                  label="Awarded Bid"
+                  value={formatCurrency(data.bidStats?.winningBid, data.tender.currency)}
+                />
+                <Info label="Avg Deviation" value={pct(data.bidStats?.averageDeviationPct)} />
+                <Info label="Lowest Deviation" value={pct(data.bidStats?.lowestDeviationPct)} />
+                <Info label="Highest Deviation" value={pct(data.bidStats?.highestDeviationPct)} />
               </div>
             ) : (
-              <div className="tl-empty">No analysis run yet. Click “Run AI Analysis” to generate indicators.</div>
+              <div className="tl-empty">
+                No neural inference recorded yet. Click “Run Neural Analysis” to scan this tender.
+              </div>
             )}
           </div>
 
-          {/* Explainable indicators */}
-          <div className="tl-card" style={{ marginBottom: 16 }}>
-            <h2 className="tl-card-title">Why was this tender flagged?</h2>
+          {/* Explainable Indicators */}
+          <div className="tl-card" style={{ marginBottom: 20 }}>
+            <h2 className="tl-card-title">
+              <Sparkles size={17} color="#f59e0b" />
+              <span>Explainable AI Risk Indicators ({data.indicators?.length || 0})</span>
+            </h2>
             {data.indicators?.length === 0 ? (
-              <div className="tl-empty">No review indicators for this tender.</div>
+              <div className="tl-empty">No suspicious collusion patterns flagged for this tender.</div>
             ) : (
               data.indicators.map((i) => <ExplainablePanel key={i.id} indicator={i} />)
             )}
           </div>
 
-          {/* Document similarity */}
-          <div className="tl-card" style={{ marginBottom: 16 }}>
-            <h2 className="tl-card-title">Similar Tender Documents</h2>
+          {/* Document Similarity */}
+          <div className="tl-card" style={{ marginBottom: 20 }}>
+            <h2 className="tl-card-title">
+              <Layers size={17} color="#a78bfa" />
+              <span>Cross-Tender Text Similarity Analysis</span>
+            </h2>
             <DocumentSimilarityList indicators={data.indicators || []} />
           </div>
 
-          {/* Bid analysis table */}
-          <div className="tl-card" style={{ marginBottom: 16 }}>
-            <h2 className="tl-card-title">Bids</h2>
+          {/* Bids Table */}
+          <div className="tl-card" style={{ marginBottom: 20 }}>
+            <h2 className="tl-card-title">
+              <Coins size={17} color="#34d399" />
+              <span>Bids &amp; Submitted Pricing Dossier</span>
+            </h2>
             <div className="tl-table-wrap">
               <table className="tl-table">
                 <thead>
                   <tr>
                     <th>Rank</th>
-                    <th>Company</th>
+                    <th>Contractor Entity</th>
                     <th>Amount</th>
-                    <th>Deviation</th>
+                    <th>Deviation from Est.</th>
                     <th>Submitted</th>
                     <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(!data.bids || data.bids.length === 0) ? (
-                    <tr><td colSpan={6}><div className="tl-empty">No bids recorded.</div></td></tr>
-                  ) : data.bids.map((b) => (
-                    <tr key={b.id}>
-                      <td>{b.rank ?? "—"}</td>
-                      <td>{b.companyName}</td>
-                      <td>{formatCurrency(b.amount, b.currency)}</td>
-                      <td>{b.deviationPct !== null ? `${b.deviationPct}%` : "—"}</td>
-                      <td>{formatDateTime(b.submittedAt)}</td>
-                      <td>{b.status}</td>
+                  {!data.bids || data.bids.length === 0 ? (
+                    <tr>
+                      <td colSpan={6}>
+                        <div className="tl-empty">No bids recorded for this tender.</div>
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    data.bids.map((b) => (
+                      <tr key={b.id}>
+                        <td style={{ fontWeight: 700, fontFamily: "var(--tl-font-mono)" }}>
+                          #{b.rank ?? "—"}
+                        </td>
+                        <td style={{ fontWeight: 600 }}>{b.companyName}</td>
+                        <td style={{ fontWeight: 700 }}>
+                          {formatCurrency(b.amount, b.currency)}
+                        </td>
+                        <td style={{ color: b.deviationPct > 0 ? "#f87171" : "#34d399" }}>
+                          {b.deviationPct !== null ? `${b.deviationPct}%` : "—"}
+                        </td>
+                        <td style={{ color: "var(--tl-text-muted)" }}>
+                          {formatDateTime(b.submittedAt)}
+                        </td>
+                        <td>
+                          <StatusBadge status={b.status} />
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -199,21 +338,32 @@ export default function Analysis() {
           {/* Runs history */}
           {data.runs?.length > 1 && (
             <div className="tl-card">
-              <h2 className="tl-card-title">Previous Runs</h2>
-              <table className="tl-table">
-                <thead>
-                  <tr><th>Started</th><th>Status</th><th>Indicators</th></tr>
-                </thead>
-                <tbody>
-                  {data.runs.map((r) => (
-                    <tr key={r.id}>
-                      <td>{formatDateTime(r.startedAt)}</td>
-                      <td>{r.status}</td>
-                      <td>{r.indicatorCount ?? "—"}</td>
+              <h2 className="tl-card-title">
+                <History size={17} color="var(--tl-text-muted)" />
+                <span>Historical Inference Audits</span>
+              </h2>
+              <div className="tl-table-wrap">
+                <table className="tl-table">
+                  <thead>
+                    <tr>
+                      <th>Started</th>
+                      <th>Status</th>
+                      <th>Flags Identified</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {data.runs.map((r) => (
+                      <tr key={r.id}>
+                        <td>{formatDateTime(r.startedAt)}</td>
+                        <td>{r.status}</td>
+                        <td>
+                          <strong>{r.indicatorCount ?? "—"}</strong>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </>
@@ -222,11 +372,28 @@ export default function Analysis() {
   );
 }
 
-function Info({ label, value }) {
+function Info({ icon, label, value }) {
   return (
     <div>
-      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4, color: "#64748b" }}>{label}</div>
-      <div style={{ fontSize: 14, marginTop: 4, fontWeight: 500 }}>{value ?? "—"}</div>
+      <div
+        style={{
+          fontSize: 10.5,
+          textTransform: "uppercase",
+          letterSpacing: 0.8,
+          color: "var(--tl-text-dim)",
+          fontWeight: 700,
+          fontFamily: "var(--tl-font-mono)",
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+        }}
+      >
+        {icon}
+        <span>{label}</span>
+      </div>
+      <div style={{ fontSize: 14.5, marginTop: 4, fontWeight: 600, color: "var(--tl-text-primary)" }}>
+        {value ?? "—"}
+      </div>
     </div>
   );
 }

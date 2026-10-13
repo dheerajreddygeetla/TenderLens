@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { ThemeProvider } from "./context/ThemeContext.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
+import { SocketProvider } from "./context/SocketContext.jsx";
 import { useAuth } from "./hooks/useAuth.js";
 import PublicRoute from "./routes/PublicRoute.jsx";
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
@@ -32,45 +34,50 @@ function RootRedirect() {
   const { status } = useAuth();
   if (status === "loading") return <FullPageSpinner />;
   if (status === "authenticated") return <Navigate to="/dashboard" replace />;
-  return <Home />;
+  return <Navigate to="/login" replace />;
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Routes>
-        <Route path="/" element={<RootRedirect />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <SocketProvider>
+          <Routes>
+            <Route path="/" element={<RootRedirect />} />
+            <Route path="/home" element={<Home />} />
 
-        <Route element={<PublicRoute />}>
-          <Route path="/login" element={<Login />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-        </Route>
+            <Route element={<PublicRoute />}>
+              <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+            </Route>
 
-        <Route element={<ProtectedRoute />}>
-          <Route element={<DashboardLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/tenders" element={<Tenders />} />
-            <Route path="/tenders/:id" element={<TenderDetails />} />
-            <Route path="/companies" element={<Companies />} />
-            <Route path="/companies/:id" element={<CompanyDetails />} />
-            <Route path="/bids" element={<Bids />} />
-            <Route path="/contracts" element={<Contracts />} />
-            <Route path="/documents" element={<Documents />} />
-            <Route path="/analysis" element={<Analysis />} />
-            <Route path="/analysis/:tenderId" element={<Analysis />} />
-            <Route path="/risks" element={<Risks />} />
-            <Route path="/risks/:id" element={<RiskDetail />} />
-            <Route path="/graph" element={<Graph />} />
-            <Route path="/map" element={<Map />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/settings" element={<Settings />} />
-          </Route>
-        </Route>
+            <Route element={<ProtectedRoute />}>
+              <Route element={<DashboardLayout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/tenders" element={<Tenders />} />
+                <Route path="/tenders/:id" element={<TenderDetails />} />
+                <Route path="/companies" element={<Companies />} />
+                <Route path="/companies/:id" element={<CompanyDetails />} />
+                <Route path="/bids" element={<Bids />} />
+                <Route path="/contracts" element={<Contracts />} />
+                <Route path="/documents" element={<Documents />} />
+                <Route path="/analysis" element={<Analysis />} />
+                <Route path="/analysis/:tenderId" element={<Analysis />} />
+                <Route path="/risks" element={<Risks />} />
+                <Route path="/risks/:id" element={<RiskDetail />} />
+                <Route path="/graph" element={<Graph />} />
+                <Route path="/map" element={<Map />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/settings" element={<Settings />} />
+              </Route>
+            </Route>
 
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </AuthProvider>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </SocketProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

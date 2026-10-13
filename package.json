@@ -1,0 +1,28 @@
+{
+  "name": "tenderlens",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AI-Powered Public Procurement Risk Analysis & Intelligence Platform",
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "dev:all": "concurrently -n server,client,ai -c blue,green,magenta \"npm run dev --prefix server\" \"npm run dev --prefix client\" \"node scripts/dev-ai.js\"",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "dev:ai": "node scripts/dev-ai.js",
+    "install:all": "npm install && npm install --prefix server && npm install --prefix client",
+    "lint": "npm run lint --prefix server && npm run lint --prefix client",
+    "format": "prettier --write \"server/src/**/*.js\" \"client/src/**/*.{js,jsx}\"",
+    "build": "npm run build --prefix client",
+    "db:migrate": "npm run db:migrate --prefix server",
+    "db:seed": "npm run db:seed --prefix server",
+    "db:reset": "npm run db:reset --prefix server",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "prettier": "^3.3.3"
+  }
+}

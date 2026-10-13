@@ -13,3 +13,17 @@ export const verifyAccessToken = (token) =>
     issuer: "tenderlens",
     audience: "tenderlens-web",
   });
+
+/** Short-lived token used between password auth and MFA code verification. */
+export const signMfaChallenge = (payload) =>
+  jwt.sign(payload, env.JWT_SECRET, {
+    expiresIn: "5m",
+    issuer: "tenderlens",
+    audience: "tenderlens-mfa",
+  });
+
+export const verifyMfaChallenge = (token) =>
+  jwt.verify(token, env.JWT_SECRET, {
+    issuer: "tenderlens",
+    audience: "tenderlens-mfa",
+  });
